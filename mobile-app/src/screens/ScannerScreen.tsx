@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { ArrowLeft, Zap, Focus } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
+import { ArrowLeft, Zap, Target } from 'lucide-react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withTiming, 
+  Easing, 
+  withSequence,
+  withDelay,
+  FadeIn
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Scanner'>;
 
@@ -14,18 +26,51 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const scanLineY = useSharedValue(0);
+  const lockScale = useSharedValue(1);
+  const lockOpacity = useSharedValue(0.3);
 
+  // Idle animation for targeting corners
+  useEffect(() => {
+    if (!isScanning) {
+      lockScale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      lockOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.6, { duration: 1500 }),
+          withTiming(0.3, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [isScanning]);
+
+  // Active scan animation
   useEffect(() => {
     if (isScanning) {
+      lockScale.value = withTiming(1, { duration: 300 });
+      lockOpacity.value = withTiming(1, { duration: 300 });
+      
       scanLineY.value = withRepeat(
         withSequence(
-          withTiming(width * 0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+          withTiming(width * 0.8, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.quad) })
         ),
         -1
       );
     }
   }, [isScanning]);
+
+  const animatedLock = useAnimatedStyle(() => ({
+    transform: [{ scale: lockScale.value }],
+    opacity: lockOpacity.value,
+  }));
 
   const animatedScanLine = useAnimatedStyle(() => ({
     transform: [{ translateY: scanLineY.value }],
@@ -37,71 +82,112 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>Camera access required for facial analysis.</Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
+        <Text style={styles.text}>Optic sensor authorization required.</Text>
+        <TouchableOpacity style={styles.authButton} onPress={requestPermission}>
+          <Text style={styles.authButtonText}>AUTHORIZE SYSTEM</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const handleCapture = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsScanning(true);
-    // Simulate scan delay then navigate to results
+    
+    // Simulate AI processing steps with haptics
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 1000);
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 2000);
+    
     setTimeout(() => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsScanning(false);
       navigation.replace('Results', { photoUri: 'simulated_uri' });
-    }, 3000);
+    }, 3500);
   };
 
   return (
     <View style={styles.container}>
       <CameraView style={StyleSheet.absoluteFill} facing="front">
         
-        {/* Overlay UI */}
+        {/* HUD Overlay */}
         <View style={styles.overlay}>
-          {/* Header */}
+          {/* Top Header HUD */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <TouchableOpacity 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.goBack();
+              }} 
+              style={styles.backButton}
+            >
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
               <ArrowLeft color="#fff" size={24} />
             </TouchableOpacity>
+            
             <View style={styles.statusBadge}>
-              <Zap color="#f59e0b" size={14} />
-              <Text style={styles.statusText}>AI READY</Text>
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={[styles.pulseDot, isScanning && styles.pulseDotActive]} />
+              <Text style={styles.statusText}>{isScanning ? 'ANALYZING' : 'AI READY'}</Text>
             </View>
           </View>
 
-          {/* Scanner Targeting Box */}
+          {/* Central Targeting System */}
           <View style={styles.targetContainer}>
-            <View style={styles.targetBox}>
+            <Animated.View style={[styles.targetBox, animatedLock]}>
+              {/* HUD Corners */}
               <View style={[styles.corner, styles.topLeft]} />
               <View style={[styles.corner, styles.topRight]} />
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
               
-              <Animated.View style={[styles.scanLine, animatedScanLine]} />
-              
+              {/* Facial Mesh Simulation (Static Overlay) */}
               {isScanning && (
-                <View style={styles.scanningTextContainer}>
-                  <Text style={styles.scanningText}>ANALYZING PILLARS...</Text>
-                </View>
+                <Animated.View entering={FadeIn} style={styles.meshOverlay}>
+                  {/* Simulated grid lines */}
+                  <View style={styles.gridLineV} />
+                  <View style={styles.gridLineH} />
+                  <View style={styles.gridCircle} />
+                </Animated.View>
               )}
-            </View>
+
+              {/* Sweeping Laser */}
+              <Animated.View style={[styles.scanLineContainer, animatedScanLine]}>
+                <LinearGradient
+                  colors={['rgba(245, 158, 11, 0)', 'rgba(245, 158, 11, 0.8)', 'rgba(245, 158, 11, 0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.scanLine}
+                />
+                <LinearGradient
+                  colors={['rgba(245, 158, 11, 0.3)', 'transparent']}
+                  style={styles.scanTrail}
+                />
+              </Animated.View>
+              
+            </Animated.View>
+            
             <Text style={styles.instructionText}>
-              {isScanning ? 'HOLD STILL' : 'ALIGN FACE IN FRAME'}
+              {isScanning ? 'EXTRACTING BIOMETRICS...' : 'ALIGN SUBJECT IN FRAME'}
             </Text>
           </View>
 
-          {/* Footer Controls */}
+          {/* Bottom Controls */}
           <View style={styles.footer}>
             <TouchableOpacity 
-              style={[styles.captureButton, isScanning && styles.captureButtonDisabled]}
+              activeOpacity={0.7}
               onPress={handleCapture}
               disabled={isScanning}
+              style={[styles.captureWrapper, isScanning && styles.captureWrapperDisabled]}
             >
-              <View style={styles.captureInner}>
-                <Focus color="#000" size={32} />
-              </View>
+              <BlurView intensity={40} tint="dark" style={styles.captureBlur}>
+                <View style={styles.captureInner}>
+                  <LinearGradient
+                    colors={['#f59e0b', '#d97706']}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Target color="#000" size={32} strokeWidth={2} />
+                </View>
+              </BlurView>
             </TouchableOpacity>
           </View>
         </View>
@@ -114,63 +200,75 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050505',
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    color: '#a1a1aa',
+    color: '#71717a',
     marginBottom: 20,
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
-  button: {
+  authButton: {
     backgroundColor: '#f59e0b',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 100,
   },
-  buttonText: {
+  authButtonText: {
     color: '#000',
-    fontWeight: 'bold',
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(5, 5, 5, 0.4)',
     justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    gap: 8,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#f59e0b',
+  },
+  pulseDotActive: {
+    backgroundColor: '#ef4444', // Red when scanning
   },
   statusText: {
     color: '#f59e0b',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
   targetContainer: {
     alignItems: 'center',
@@ -179,94 +277,109 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: width * 0.8,
     position: 'relative',
-    marginBottom: 32,
+    marginBottom: 40,
   },
   corner: {
     position: 'absolute',
-    width: 40,
-    height: 40,
+    width: 60,
+    height: 60,
     borderColor: '#f59e0b',
   },
   topLeft: {
     top: 0,
     left: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 16,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
   },
   topRight: {
     top: 0,
     right: 0,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 16,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 16,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 16,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+  },
+  meshOverlay: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridLineV: {
+    position: 'absolute',
+    width: 1,
+    height: '100%',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  gridLineH: {
+    position: 'absolute',
+    height: 1,
+    width: '100%',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  gridCircle: {
+    width: '50%',
+    height: '50%',
+    borderRadius: 1000,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderStyle: 'dashed',
+  },
+  scanLineContainer: {
+    width: '100%',
+    height: 60, // Total height including trail
+    position: 'absolute',
+    top: 0,
   },
   scanLine: {
     width: '100%',
     height: 2,
-    backgroundColor: '#f59e0b',
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 5,
   },
-  scanningTextContainer: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 16,
-  },
-  scanningText: {
-    color: '#f59e0b',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 3,
+  scanTrail: {
+    width: '100%',
+    height: 58,
   },
   instructionText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 3,
     textTransform: 'uppercase',
   },
   footer: {
-    paddingBottom: 60,
+    paddingBottom: Platform.OS === 'ios' ? 60 : 40,
     alignItems: 'center',
   },
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  captureWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    overflow: 'hidden',
     borderWidth: 2,
-    borderColor: '#f59e0b',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  captureButtonDisabled: {
+  captureWrapperDisabled: {
     opacity: 0.5,
   },
+  captureBlur: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   captureInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f59e0b',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },
