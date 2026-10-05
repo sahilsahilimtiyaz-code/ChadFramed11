@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing, withSpring } from 'react-native-reanimated';
 import { ArrowLeft, Target, Activity, Shield, CheckCircle2, ChevronRight } from 'lucide-react-native';
@@ -9,23 +10,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Results'>;
-const { width } = Dimensions.get('window');
+type ResultsRouteProp = RouteProp<RootStackParamList, 'Results'>;
 
-const ANALYSIS = {
-  tier: 'HTN', 
-  tierTitle: 'HIGH TIER NORMIE',
-  overallScore: 7.4,
-  pillars: [
-    { name: 'Harmony', score: 8.1, icon: Target, desc: 'Optimal ratio alignment.' },
-    { name: 'Angularity', score: 6.8, icon: Activity, desc: 'Gonial angle variance.' },
-    { name: 'Dimorphism', score: 7.5, icon: Shield, desc: 'High masculine markers.' },
-    { name: 'Skin Health', score: 9.2, icon: CheckCircle2, desc: 'Peak clarity detected.' }
-  ],
-  directives: [
-    { title: 'Lower Third Width', desc: 'Implement mastication protocol to induce 2mm lateral expansion.', priority: 'HIGH' },
-    { title: 'Sodium Reduction', desc: 'Clear subcutaneous water retention to expose underlying angularity.', priority: 'MED' }
-  ]
-};
+const { width } = Dimensions.get('window');
 
 const getTierColor = (tier: string): [string, string, ...string[]] => {
   switch (tier) {
@@ -37,17 +24,50 @@ const getTierColor = (tier: string): [string, string, ...string[]] => {
   }
 };
 
-export default function ResultsScreen({ navigation }: { navigation: NavigationProp }) {
-  const tierColors = getTierColor(ANALYSIS.tier);
+const getTierTitle = (tier: string) => {
+  switch (tier) {
+    case 'Chad': return 'APEX TIER';
+    case 'HTN': return 'HIGH TIER NORMIE';
+    case 'MTN': return 'MID TIER NORMIE';
+    case 'LTN': return 'LOW TIER NORMIE';
+    default: return 'UNKNOWN';
+  }
+};
+
+const generateDirectives = (tier: string) => {
+  if (tier === 'Chad' || tier === 'HTN') {
+    return [
+      { title: 'Maintain Protocol', desc: 'Current biometric state is optimal. Continue maintenance regimen.', priority: 'LOW' },
+      { title: 'Micro-Optimization', desc: 'Focus on skin vitality and sleep hygiene for 1% gains.', priority: 'LOW' }
+    ];
+  } else if (tier === 'MTN') {
+    return [
+      { title: 'Sodium Reduction', desc: 'Clear subcutaneous water retention to expose underlying angularity.', priority: 'MED' },
+      { title: 'Masseter Hypertrophy', desc: 'Implement mastication protocol to induce 2mm lateral expansion.', priority: 'MED' }
+    ];
+  } else {
+    return [
+      { title: 'Aggressive Cutting', desc: 'Body fat reduction required to reveal facial bone structure.', priority: 'HIGH' },
+      { title: 'Surgical Consult', desc: 'Evaluate orthogonal misalignment and bimaxillary recession.', priority: 'HIGH' }
+    ];
+  }
+};
+
+export default function ResultsScreen({ navigation, route }: { navigation: NavigationProp, route: ResultsRouteProp }) {
+  const params = route.params || { tier: 'HTN', score: 7.4, harmony: 8.1, angularity: 6.8, dimorphism: 7.5, skin: 9.2 };
   
+  const tierColors = getTierColor(params.tier);
+  const tierTitle = getTierTitle(params.tier);
+  const directives = generateDirectives(params.tier);
+
   // Score animation
   const scoreValue = useSharedValue(0);
 
   useEffect(() => {
-    scoreValue.value = withDelay(800, withSpring(ANALYSIS.overallScore, { damping: 12, stiffness: 90 }));
+    scoreValue.value = withDelay(800, withSpring(params.score, { damping: 12, stiffness: 90 }));
     // Trigger haptics when results land
     setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 800);
-  }, []);
+  }, [params.score]);
 
   return (
     <View style={styles.container}>
@@ -64,7 +84,7 @@ export default function ResultsScreen({ navigation }: { navigation: NavigationPr
         <TouchableOpacity 
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            navigation.navigate('Home');
+            navigation.navigate('MainTabs');
           }} 
           style={styles.backButton}
         >
@@ -88,14 +108,14 @@ export default function ResultsScreen({ navigation }: { navigation: NavigationPr
             style={styles.tierBadgeWrapper}
           >
             <View style={styles.tierBadgeInner}>
-              <Text style={styles.tierText}>{ANALYSIS.tier}</Text>
+              <Text style={styles.tierText}>{params.tier}</Text>
             </View>
           </LinearGradient>
           
-          <Text style={styles.tierSubtext}>{ANALYSIS.tierTitle}</Text>
+          <Text style={styles.tierSubtext}>{tierTitle}</Text>
           
           <View style={styles.scoreContainer}>
-            <Text style={styles.scoreValue}>{ANALYSIS.overallScore}</Text>
+            <Text style={styles.scoreValue}>{params.score}</Text>
             <Text style={styles.scoreDivider}>/10</Text>
           </View>
         </Animated.View>
@@ -104,23 +124,50 @@ export default function ResultsScreen({ navigation }: { navigation: NavigationPr
         <Animated.View entering={FadeInDown.delay(400).duration(800)} style={styles.section}>
           <Text style={styles.sectionTitle}>CORE PILLARS</Text>
           <View style={styles.pillarsGrid}>
-            {ANALYSIS.pillars.map((pillar, i) => (
-              <BlurView key={i} intensity={20} tint="dark" style={styles.pillarCard}>
-                <View style={styles.pillarHeader}>
-                  <pillar.icon color={tierColors[0]} size={20} strokeWidth={2} />
-                  <Text style={styles.pillarScore}>{pillar.score}</Text>
-                </View>
-                <Text style={styles.pillarName}>{pillar.name}</Text>
-                <Text style={styles.pillarDesc}>{pillar.desc}</Text>
-              </BlurView>
-            ))}
+            
+            <BlurView intensity={20} tint="dark" style={styles.pillarCard}>
+              <View style={styles.pillarHeader}>
+                <Target color={tierColors[0]} size={20} strokeWidth={2} />
+                <Text style={styles.pillarScore}>{params.harmony > 10 ? 9.9 : params.harmony < 1 ? 1.0 : params.harmony}</Text>
+              </View>
+              <Text style={styles.pillarName}>Harmony</Text>
+              <Text style={styles.pillarDesc}>Ratio alignment metric.</Text>
+            </BlurView>
+            
+            <BlurView intensity={20} tint="dark" style={styles.pillarCard}>
+              <View style={styles.pillarHeader}>
+                <Activity color={tierColors[0]} size={20} strokeWidth={2} />
+                <Text style={styles.pillarScore}>{params.angularity > 10 ? 9.9 : params.angularity < 1 ? 1.0 : params.angularity}</Text>
+              </View>
+              <Text style={styles.pillarName}>Angularity</Text>
+              <Text style={styles.pillarDesc}>Bone definition index.</Text>
+            </BlurView>
+
+            <BlurView intensity={20} tint="dark" style={styles.pillarCard}>
+              <View style={styles.pillarHeader}>
+                <Shield color={tierColors[0]} size={20} strokeWidth={2} />
+                <Text style={styles.pillarScore}>{params.dimorphism > 10 ? 9.9 : params.dimorphism < 1 ? 1.0 : params.dimorphism}</Text>
+              </View>
+              <Text style={styles.pillarName}>Dimorphism</Text>
+              <Text style={styles.pillarDesc}>Masculine marker analysis.</Text>
+            </BlurView>
+
+            <BlurView intensity={20} tint="dark" style={styles.pillarCard}>
+              <View style={styles.pillarHeader}>
+                <CheckCircle2 color={tierColors[0]} size={20} strokeWidth={2} />
+                <Text style={styles.pillarScore}>{params.skin > 10 ? 9.9 : params.skin < 1 ? 1.0 : params.skin}</Text>
+              </View>
+              <Text style={styles.pillarName}>Skin Health</Text>
+              <Text style={styles.pillarDesc}>Vitality and clarity.</Text>
+            </BlurView>
+
           </View>
         </Animated.View>
 
         {/* Action Plan */}
         <Animated.View entering={FadeInDown.delay(600).duration(800)} style={styles.section}>
           <Text style={styles.sectionTitle}>HARD TRUTH DIRECTIVES</Text>
-          {ANALYSIS.directives.map((dir, i) => (
+          {directives.map((dir, i) => (
             <BlurView key={i} intensity={20} tint="dark" style={styles.directiveCard}>
               <View style={styles.directiveHeader}>
                 <Text style={styles.directiveTitle}>{dir.title}</Text>

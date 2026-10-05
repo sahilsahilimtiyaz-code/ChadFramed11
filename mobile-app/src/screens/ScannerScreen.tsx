@@ -101,7 +101,23 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
     setTimeout(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsScanning(false);
-      navigation.replace('Results', { photoUri: 'simulated_uri' });
+      
+      // Math to generate realistic random scores
+      const randScore = (Math.random() * (9.5 - 3.5) + 3.5).toFixed(1);
+      const scoreNum = parseFloat(randScore);
+      let tier = 'LTN';
+      if (scoreNum >= 8.5) tier = 'Chad';
+      else if (scoreNum >= 7.0) tier = 'HTN';
+      else if (scoreNum >= 5.0) tier = 'MTN';
+
+      navigation.replace('Results', { 
+        tier,
+        score: scoreNum,
+        harmony: parseFloat((scoreNum + (Math.random() * 1.5 - 0.75)).toFixed(1)),
+        angularity: parseFloat((scoreNum + (Math.random() * 2 - 1)).toFixed(1)),
+        dimorphism: parseFloat((scoreNum + (Math.random() * 1.5 - 0.75)).toFixed(1)),
+        skin: parseFloat((scoreNum + (Math.random() * 2.5 - 1)).toFixed(1)),
+      });
     }, 3500);
   };
 
