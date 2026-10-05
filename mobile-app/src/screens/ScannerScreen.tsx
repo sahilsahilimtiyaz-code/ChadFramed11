@@ -4,6 +4,7 @@ import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { ArrowLeft, Zap, Target } from 'lucide-react-native';
+import { API_URL } from '../config';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -25,6 +26,8 @@ const { width, height } = Dimensions.get('window');
 export default function ScannerScreen({ navigation }: { navigation: NavigationProp }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
+  const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
+  
   const scanLineY = useSharedValue(0);
   const lockScale = useSharedValue(1);
   const lockOpacity = useSharedValue(0.3);
@@ -90,40 +93,85 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
     );
   }
 
-  const handleCapture = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setIsScanning(true);
+  const handleCapture = async () => {
+    if (!cameraRef) return;
     
-    // Simulate AI processing steps with haptics
-    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 1000);
-    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 2000);
-    
-    setTimeout(() => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setIsScanning(true);
+      
+      // 1. Capture Image
+      const photo = await cameraRef.takePictureAsync({
+        quality: 0.5, // Compress for faster upload
+        base64: false,
+      });
+      
+      if (!photo) throw new Error("Failed to capture image");
+      
+      // Haptic feedback during processing
+      const hapticInterval = setInterval(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }, 800);
+
+      // 2. Prepare Multipart Form Data
+      const formData = new FormData();
+      const filename = photo.uri.split('/').pop() || 'scan.jpg';
+      
+      // Format required by React Native fetch
+      formData.append('file', {
+        uri: photo.uri,
+        name: filename,
+        type: 'image/jpeg',
+      } as any);
+
+      // 3. Upload to Python Backend
+      const response = await fetch(`${API_URL}/analyze`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      clearInterval(hapticInterval);
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Server error");
+      }
+
+      const result = await response.json();
+      const data = result.data; // { tier, score, metrics: { harmony, angularity... } }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsScanning(false);
       
-      // Math to generate realistic random scores
-      const randScore = (Math.random() * (9.5 - 3.5) + 3.5).toFixed(1);
-      const scoreNum = parseFloat(randScore);
-      let tier = 'LTN';
-      if (scoreNum >= 8.5) tier = 'Chad';
-      else if (scoreNum >= 7.0) tier = 'HTN';
-      else if (scoreNum >= 5.0) tier = 'MTN';
-
+      // 4. Navigate to Results with REAL Backend Data
       navigation.replace('Results', { 
-        tier,
-        score: scoreNum,
-        harmony: parseFloat((scoreNum + (Math.random() * 1.5 - 0.75)).toFixed(1)),
-        angularity: parseFloat((scoreNum + (Math.random() * 2 - 1)).toFixed(1)),
-        dimorphism: parseFloat((scoreNum + (Math.random() * 1.5 - 0.75)).toFixed(1)),
-        skin: parseFloat((scoreNum + (Math.random() * 2.5 - 1)).toFixed(1)),
+        tier: data.tier,
+        score: data.score,
+        harmony: data.metrics.harmony,
+        angularity: data.metrics.angularity,
+        dimorphism: data.metrics.dimorphism,
+        skin: data.metrics.skin,
       });
-    }, 3500);
+      
+    } catch (error) {
+      console.error(error);
+      setIsScanning(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      alert(error instanceof Error ? error.message : "Failed to analyze image. Ensure backend is running and API_URL is correct.");
+    }
   };
 
   return (
     <View style={styles.container}>
-      <CameraView style={StyleSheet.absoluteFill} facing="front">
+      <CameraView 
+        style={StyleSheet.absoluteFill} 
+        facing="front"
+        ref={(ref) => setCameraRef(ref)}
+      >
         
         {/* HUD Overlay */}
         <View style={styles.overlay}>
