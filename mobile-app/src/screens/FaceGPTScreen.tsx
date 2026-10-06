@@ -1,58 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { Send, Cpu } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
-import { API_URL } from '../config';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { Brain, Send, User } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { API_URL } from '../utils/config';
+
+type Message = {
+  role: 'user' | 'coach';
+  content: string;
+};
 
 export default function FaceGPTScreen() {
-  const [messages, setMessages] = useState([
-    { role: 'ai', text: 'SYSTEM ONLINE. I am FaceGPT, your clinical aesthetics analyst. Upload your latest scan or ask a specific biometric query for brutal, uncompromising analysis.' }
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'coach', content: "SYSTEM RESPONSE: I am the ChadFramed AI Coach. I have analyzed your biometric profile. Ask me for specific improvement directives regarding your facial harmony, angularity, or skin vitality." }
   ]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [scanData, setScanData] = useState<any>(null);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // In a real app, we would fetch the user's latest scan from global state/context
-  const mockBiometricContext = {
-    tier: 'HTN',
-    fwhr: 1.35
+  useEffect(() => {
+    loadContext();
+  }, []);
+
+  const loadContext = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('cf_latest_scan');
+      if (stored) {
+        setScanData(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.log('Error loading context for FaceGPT');
+    }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async () => {
+    if (!input.trim() || isLoading) return;
     
     const userMsg = input.trim();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInput('');
-    setLoading(true);
-    
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsLoading(true);
+
     try {
+      const payload = {
+        message: userMsg,
+        biometric_context: scanData ? {
+          tier: scanData.tier,
+          fwhr: scanData.raw_ratios.fwhr,
+          score: scanData.score
+        } : {}
+      };
+
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMsg,
-          biometric_context: mockBiometricContext
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
       
-      if (res.ok) {
-        const json = await res.json();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setMessages(prev => [...prev, { role: 'ai', text: json.reply }]);
-      } else {
-        throw new Error("API Error");
-      }
+      const data = await res.json();
+      
+      setMessages(prev => [...prev, { role: 'coach', content: data.reply || "Error: No response from matrix." }]);
     } catch (err) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setMessages(prev => [...prev, { role: 'ai', text: 'SYSTEM ERROR: Connection to FaceGPT engine failed.' }]);
+      setMessages(prev => [...prev, { role: 'coach', content: "CRITICAL ERROR: Unable to connect to AI Engine. Is the backend running?" }]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -62,42 +75,70 @@ export default function FaceGPTScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <LinearGradient colors={['#06b6d4', '#8b5cf6']} style={styles.iconContainer}>
-          <Cpu color="#000" size={20} />
-        </LinearGradient>
-        <Text style={styles.headerTitle}>FaceGPT Engine</Text>
+        <View style={styles.headerTitleContainer}>
+          <Brain color="#a855f7" size={28} />
+          <Text style={styles.headerTitle}>AI Coach</Text>
+        </View>
+        <Text style={styles.headerSubtitle}>Brutal clinical advice based on your scan.</Text>
       </View>
 
-      <ScrollView style={styles.chatContainer} contentContainerStyle={styles.chatContent}>
-        {messages.map((msg, i) => (
-          <View key={i} style={[styles.messageWrapper, msg.role === 'user' ? styles.messageUser : styles.messageAI]}>
-            {msg.role === 'ai' && (
-              <View style={styles.aiAvatar}>
-                <Text style={styles.aiAvatarText}>AI</Text>
-              </View>
-            )}
-            <View style={[styles.messageBubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleAI]}>
-              <Text style={msg.role === 'user' ? styles.textUser : styles.textAI}>{msg.text}</Text>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.chatArea} 
+        contentContainerStyle={styles.chatContent}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+      >
+        {messages.map((msg, idx) => (
+          <Animated.View 
+            key={idx}
+            entering={FadeInDown.duration(400)}
+            style={[
+              styles.messageWrapper,
+              msg.role === 'user' ? styles.messageWrapperUser : styles.messageWrapperCoach
+            ]}
+          >
+            <View style={[styles.avatar, msg.role === 'coach' ? styles.avatarCoach : styles.avatarUser]}>
+              {msg.role === 'coach' ? <Brain color="#c084fc" size={16} /> : <User color="#a1a1aa" size={16} />}
+            </View>
+            <View style={[
+              styles.messageBubble,
+              msg.role === 'coach' ? styles.bubbleCoach : styles.bubbleUser
+            ]}>
+              <Text style={msg.role === 'coach' ? styles.textCoach : styles.textUser}>
+                {msg.content}
+              </Text>
+            </View>
+          </Animated.View>
+        ))}
+        {isLoading && (
+          <View style={[styles.messageWrapper, styles.messageWrapperCoach]}>
+             <View style={[styles.avatar, styles.avatarCoach]}>
+              <Brain color="#c084fc" size={16} />
+            </View>
+            <View style={[styles.messageBubble, styles.bubbleCoach]}>
+              <Text style={styles.textCoach}>Analyzing variables...</Text>
             </View>
           </View>
-        ))}
+        )}
       </ScrollView>
 
-      <BlurView intensity={30} tint="dark" style={styles.inputContainer}>
-        <TextInput
+      <View style={styles.inputArea}>
+        <TextInput 
           style={styles.input}
-          placeholder="Query the system..."
+          placeholder="Ask about jawline, eyes, tier..."
           placeholderTextColor="#71717a"
           value={input}
           onChangeText={setInput}
-          keyboardAppearance="dark"
+          onSubmitEditing={sendMessage}
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={loading}>
-          <LinearGradient colors={loading ? ['#3f3f46', '#27272a'] : ['#06b6d4', '#8b5cf6']} style={styles.sendInner}>
-            {loading ? <ActivityIndicator size="small" color="#000" /> : <Send color="#000" size={16} />}
-          </LinearGradient>
+        <TouchableOpacity 
+          style={[styles.sendButton, (!input.trim() || isLoading) && styles.sendButtonDisabled]} 
+          onPress={sendMessage}
+          disabled={!input.trim() || isLoading}
+        >
+          <Send color="#fff" size={18} />
         </TouchableOpacity>
-      </BlurView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -105,123 +146,126 @@ export default function FaceGPTScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#030303',
   },
   header: {
+    marginTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    gap: 12,
+    marginBottom: 4,
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: -1,
   },
-  chatContainer: {
+  headerSubtitle: {
+    color: '#a1a1aa',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  chatArea: {
     flex: 1,
+    backgroundColor: '#0a0a0a',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   chatContent: {
     padding: 24,
+    gap: 20,
     paddingBottom: 40,
   },
   messageWrapper: {
     flexDirection: 'row',
-    marginBottom: 24,
     alignItems: 'flex-start',
+    gap: 12,
+    maxWidth: '85%',
   },
-  messageUser: {
-    justifyContent: 'flex-end',
+  messageWrapperUser: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
   },
-  messageAI: {
-    justifyContent: 'flex-start',
+  messageWrapperCoach: {
+    alignSelf: 'flex-start',
   },
-  aiAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-    borderWidth: 1,
-    borderColor: '#06b6d4',
-    justifyContent: 'center',
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  aiAvatarText: {
-    color: '#06b6d4',
-    fontSize: 10,
-    fontWeight: '900',
+  avatarCoach: {
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  avatarUser: {
+    backgroundColor: '#18181b',
+    borderColor: '#27272a',
   },
   messageBubble: {
-    maxWidth: '80%',
     padding: 16,
-    borderRadius: 6,
+    borderRadius: 20,
   },
-  bubbleUser: {
-    backgroundColor: '#18181b',
+  bubbleCoach: {
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    borderBottomRightRadius: 4,
-  },
-  bubbleAI: {
-    backgroundColor: 'rgba(6, 182, 212, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.2)',
+    borderColor: '#222',
     borderTopLeftRadius: 4,
   },
-  textUser: {
-    color: '#fff',
-    fontSize: 14,
-    lineHeight: 20,
+  bubbleUser: {
+    backgroundColor: '#9333ea', // Solid purple for user
+    borderTopRightRadius: 4,
   },
-  textAI: {
+  textCoach: {
     color: '#d4d4d8',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
-    letterSpacing: 0.5,
   },
-  inputContainer: {
+  textUser: {
+    color: '#ffffff',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  inputArea: {
     flexDirection: 'row',
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    backgroundColor: '#050505',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
+    gap: 12,
   },
   input: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    height: 50,
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
+    borderColor: '#222',
+    borderRadius: 25,
     paddingHorizontal: 20,
-    paddingVertical: 12,
     color: '#fff',
-    fontSize: 14,
-    marginRight: 12,
+    fontSize: 15,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  sendInner: {
-    flex: 1,
-    justifyContent: 'center',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#9333ea',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#3f3f46',
+    opacity: 0.5,
   }
 });

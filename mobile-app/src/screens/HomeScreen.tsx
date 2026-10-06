@@ -1,242 +1,266 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
-import { ScanFace, ChevronRight, Activity, ShieldAlert } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, ScrollView } from 'react-native';
+import { Camera, BarChart3, Target, Brain, Activity, Shield, ChevronRight } from 'lucide-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import Animated, { FadeInDown, FadeInUp, withRepeat, withTiming, useAnimatedStyle, useSharedValue, withSequence, Easing } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: { navigation: NavigationProp }) {
-  const glowOpacity = useSharedValue(0.4);
-
-  React.useEffect(() => {
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.8, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.4, { duration: 3000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedGlow = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-  }));
-
   const handleScanPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     navigation.navigate('Scanner');
   };
 
   return (
-    <View style={styles.container}>
-      {/* Luxury Ambient Glow */}
-      <Animated.View style={[styles.glowBackground, animatedGlow]} />
-
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      
+      {/* Header */}
       <View style={styles.header}>
-        <Animated.View entering={FadeInDown.delay(100).duration(1000).springify()}>
+        <Animated.View entering={FadeInDown.delay(100).duration(800)} style={styles.logoWrapper}>
           <LinearGradient
-            colors={['#06b6d4', '#8b5cf6']}
-            style={styles.logoContainer}
+            colors={['#9333ea', '#3b82f6']} // Purple to Blue
+            style={styles.logoGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.logoC}>C</Text>
+            <Text style={styles.logoC}>CF</Text>
           </LinearGradient>
         </Animated.View>
-        <Animated.Text entering={FadeInDown.delay(200).duration(1000).springify()} style={styles.logoText}>
+        <Animated.Text entering={FadeInDown.delay(200).duration(800)} style={styles.logoText}>
           ChadFramed
         </Animated.Text>
       </View>
 
-      <View style={styles.content}>
-        <Animated.View entering={FadeInUp.delay(400).duration(1000)}>
-          <View style={styles.subtitleBadge}>
-            <Text style={styles.subtitle}>100% Authentic Analytics</Text>
+      {/* Hero */}
+      <View style={styles.heroSection}>
+        <Animated.View entering={FadeInUp.delay(300).duration(800)}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>AI-Powered Facial Analysis</Text>
           </View>
           <Text style={styles.title}>
-            The <Text style={styles.highlight}>Alpha</Text> Standard{'\n'}of Aesthetics.
+            Elevate Your{'\n'}
+            <Text style={styles.titleHighlight}>Appearance.</Text>
           </Text>
           <Text style={styles.description}>
-            No fake features. No sugarcoating. Discover your true raw potential and get the exact roadmap to level up.
+            Ascend to your highest aesthetic potential. Get a brutally honest, measurable breakdown of your facial structure and proportions.
           </Text>
         </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(600).duration(1000)} style={styles.statsContainer}>
-          <BlurView intensity={20} tint="dark" style={styles.statBox}>
-            <Activity color="#06b6d4" size={24} strokeWidth={1.5} />
-            <Text style={styles.statValue}>140+</Text>
-            <Text style={styles.statLabel}>Data Points</Text>
-          </BlurView>
-          <BlurView intensity={20} tint="dark" style={styles.statBox}>
-            <ShieldAlert color="#06b6d4" size={24} strokeWidth={1.5} />
-            <Text style={styles.statValue}>99.8%</Text>
-            <Text style={styles.statLabel}>Accuracy</Text>
-          </BlurView>
+        
+        <Animated.View entering={FadeInUp.delay(500).duration(800)}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={handleScanPress}
+          >
+            <LinearGradient
+              colors={['#9333ea', '#3b82f6']}
+              style={styles.primaryButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Camera color="#fff" size={20} />
+              <Text style={styles.primaryButtonText}>Analyze My Face</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
       </View>
 
-      <Animated.View entering={FadeInUp.delay(800).duration(1000)} style={styles.footer}>
-        <TouchableOpacity 
-          activeOpacity={0.9}
-          onPress={handleScanPress}
-        >
-          <LinearGradient
-            colors={['#06b6d4', '#8b5cf6']}
-            style={styles.scanButton}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <ScanFace color="#000" size={24} strokeWidth={2} />
-            <Text style={styles.scanButtonText}>INITIALIZE SCAN</Text>
-            <ChevronRight color="#000" size={20} strokeWidth={2} />
-          </LinearGradient>
-        </TouchableOpacity>
+      {/* Features Grid */}
+      <Animated.View entering={FadeInUp.delay(600).duration(800)} style={styles.metricsSection}>
+        <Text style={styles.sectionTitle}>Deep Facial Metrics Analysis.</Text>
+        <Text style={styles.sectionSubtitle}>Detailed, mathematically accurate breakdowns.</Text>
+        
+        <View style={styles.featureGrid}>
+          
+          <View style={styles.featureCard}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)' }]}>
+              <BarChart3 color="#60a5fa" size={24} />
+            </View>
+            <Text style={styles.featureTitle}>Facial Rating</Text>
+            <Text style={styles.featureDesc}>AI-generated assessment based purely on measurable geometric proportions.</Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(168, 85, 247, 0.1)', borderColor: 'rgba(168, 85, 247, 0.3)' }]}>
+              <Target color="#c084fc" size={24} />
+            </View>
+            <Text style={styles.featureTitle}>Metrics Breakdown</Text>
+            <Text style={styles.featureDesc}>Detailed analysis of crucial features including symmetry, fWHR, and gonial angles.</Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(236, 72, 153, 0.1)', borderColor: 'rgba(236, 72, 153, 0.3)' }]}>
+              <Brain color="#f472b6" size={24} />
+            </View>
+            <Text style={styles.featureTitle}>AI Coach</Text>
+            <Text style={styles.featureDesc}>Ask specific questions and receive data-driven guidance on improvement strategies.</Text>
+          </View>
+
+          <View style={styles.featureCard}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
+              <Activity color="#fbbf24" size={24} />
+            </View>
+            <Text style={styles.featureTitle}>Harmony Tracking</Text>
+            <Text style={styles.featureDesc}>Monitor your overall aesthetic balance and identify disrupting features.</Text>
+          </View>
+
+        </View>
       </Animated.View>
-    </View>
+      
+      <View style={{height: 100}} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000', // Absolute deep black
-    padding: 24,
+    backgroundColor: '#030303',
   },
-  glowBackground: {
-    position: 'absolute',
-    top: -height * 0.2,
-    left: -width * 0.5,
-    width: width * 2,
-    height: width * 2,
-    borderRadius: width,
-    backgroundColor: 'rgba(6, 182, 212, 0.08)', // Subtle Cyan ambient
+  contentContainer: {
+    padding: 24,
   },
   header: {
     marginTop: Platform.OS === 'ios' ? 60 : 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 40,
   },
-  logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  logoWrapper: {
+    shadowColor: '#9333ea',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  logoGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   logoC: {
-    color: '#000',
-    fontSize: 26,
+    color: '#fff',
+    fontSize: 20,
     fontWeight: '900',
+    letterSpacing: -1,
   },
   logoText: {
     color: '#fff',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingTop: 40,
+  heroSection: {
+    marginBottom: 50,
   },
-  subtitleBadge: {
+  badge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
     marginBottom: 20,
   },
-  subtitle: {
-    color: '#06b6d4',
-    fontSize: 10,
-    fontWeight: '800',
+  badgeText: {
+    color: '#d8b4fe',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   title: {
     color: '#ffffff',
-    fontSize: 52,
+    fontSize: 48,
     fontWeight: '900',
-    lineHeight: 56,
+    lineHeight: 54,
     letterSpacing: -1.5,
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  highlight: {
-    color: '#06b6d4',
+  titleHighlight: {
+    color: '#c084fc', // Backup solid color if gradient text isn't available easily in basic RN
   },
   description: {
     color: '#a1a1aa',
     fontSize: 16,
-    lineHeight: 26,
-    fontWeight: '400',
-    marginBottom: 48,
+    lineHeight: 24,
+    fontWeight: '500',
+    marginBottom: 32,
+    paddingRight: 20,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  statBox: {
-    flex: 1,
-    borderRadius: 8,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(20, 20, 20, 0.4)', // Base dark for android fallback
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '900',
-    marginTop: 16,
-    marginBottom: 4,
-    letterSpacing: -1,
-  },
-  statLabel: {
-    color: '#71717a',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  footer: {
-    marginBottom: Platform.OS === 'ios' ? 40 : 20,
-  },
-  scanButton: {
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 22,
+    alignSelf: 'flex-start',
+    paddingVertical: 18,
     paddingHorizontal: 32,
-    borderRadius: 2,
+    borderRadius: 30,
     gap: 12,
-    shadowColor: '#06b6d4',
+    shadowColor: '#9333ea',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowRadius: 15,
+    elevation: 10,
   },
-  scanButtonText: {
-    color: '#000',
-    fontSize: 16,
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  metricsSection: {
+    marginTop: 20,
+  },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: 28,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
+  sectionSubtitle: {
+    color: '#a1a1aa',
+    fontSize: 15,
+    marginBottom: 32,
+    fontWeight: '500',
+  },
+  featureGrid: {
+    gap: 16,
+  },
+  featureCard: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  iconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  featureTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  featureDesc: {
+    color: '#a1a1aa',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  }
 });

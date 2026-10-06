@@ -13,3 +13,6 @@
  GET / 200 in 72ms (next.js: 11ms, application-code: 61ms)
  GET /dashboard 200 in 1274ms (next.js: 1233ms, application-code: 41ms)
 [browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /dashboard 200 in 955ms (next.js: 457ms, application-code: 498ms)
+ GET /dashboard/metrics 200 in 798ms (next.js: 695ms, application-code: 104ms)
+[?25h

@@ -1,93 +1,99 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { User, Settings, LogOut } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { Settings, ShieldAlert, Bell, HelpCircle, LogOut, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProfileScreen() {
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <LinearGradient colors={['#10b981', '#059669']} style={styles.iconContainer}>
-          <User color="#fff" size={20} />
-        </LinearGradient>
-        <Text style={styles.headerTitle}>Operative Profile</Text>
+        <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>G</Text>
-          </View>
-          <Text style={styles.name}>Guest Operative</Text>
-          <Text style={styles.plan}>FREE TIER</Text>
+      {/* Account Profile Card */}
+      <View style={styles.profileCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>OP</Text>
         </View>
-
-        <View style={styles.menu}>
-          <View style={styles.menuItem}>
-            <Settings color="#a1a1aa" size={20} />
-            <Text style={styles.menuText}>System Preferences</Text>
-          </View>
-          <View style={styles.menuItem}>
-            <LogOut color="#ef4444" size={20} />
-            <Text style={[styles.menuText, { color: '#ef4444' }]}>Terminate Session</Text>
+        <View>
+          <Text style={styles.name}>Operative</Text>
+          <View style={styles.tierBadge}>
+            <Text style={styles.tierText}>Free Tier</Text>
           </View>
         </View>
       </View>
-    </View>
+
+      {/* Settings Menu List */}
+      <View style={styles.menuContainer}>
+        {[
+          { label: "Account Settings", icon: <Settings color="#a1a1aa" size={20} /> },
+          { label: "Notifications", icon: <Bell color="#a1a1aa" size={20} /> },
+          { label: "Privacy & Data", icon: <ShieldAlert color="#a1a1aa" size={20} /> },
+          { label: "Help & Support", icon: <HelpCircle color="#a1a1aa" size={20} /> }
+        ].map((item, idx) => (
+          <TouchableOpacity key={idx} style={[styles.menuItem, idx === 3 && styles.menuItemLast]}>
+            <View style={styles.menuItemLeft}>
+              {item.icon}
+              <Text style={styles.menuItemLabel}>{item.label}</Text>
+            </View>
+            <ChevronRight color="#52525b" size={20} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity style={styles.logoutButton}>
+        <LogOut color="#ef4444" size={20} />
+        <Text style={styles.logoutText}>Sign Out</Text>
+      </TouchableOpacity>
+      
+      <View style={{height: 100}} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#030303',
+  },
+  contentContainer: {
+    padding: 24,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    marginTop: Platform.OS === 'ios' ? 60 : 40,
+    marginBottom: 30,
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  content: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#18181b',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarText: {
-    color: '#fff',
     fontSize: 32,
     fontWeight: '900',
+    letterSpacing: -1,
+  },
+  profileCard: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 32,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#18181b',
+    borderWidth: 2,
+    borderColor: '#27272a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#a1a1aa',
+    fontSize: 20,
+    fontWeight: '800',
   },
   name: {
     color: '#fff',
@@ -95,31 +101,63 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 4,
   },
-  plan: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 2,
+  tierBadge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.2)',
+    borderRadius: 12,
   },
-  menu: {
-    width: '100%',
-    backgroundColor: '#18181b',
-    borderRadius: 4,
-    overflow: 'hidden',
+  tierText: {
+    color: '#c084fc',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  menuContainer: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
+    marginBottom: 24,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  menuText: {
+  menuItemLast: {
+    borderBottomWidth: 0,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  menuItemLabel: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 16,
+    fontWeight: '500',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 16,
+  },
+  logoutText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '700',
   }
 });

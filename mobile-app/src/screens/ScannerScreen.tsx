@@ -1,143 +1,109 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
-import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { ArrowLeft, Zap, Target } from 'lucide-react-native';
-import { API_URL } from '../config';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  Easing, 
-  withSequence,
-  withDelay,
-  FadeIn
-} from 'react-native-reanimated';
+import { X, RefreshCcw, Zap, ArrowLeft } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Scanner'>;
 
 const { width, height } = Dimensions.get('window');
 
+// API Configuration
+const API_URL = 'http://10.0.2.2:8000'; // Standard Android emulator localhost
+
 export default function ScannerScreen({ navigation }: { navigation: NavigationProp }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [isScanning, setIsScanning] = useState(false);
-  const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
+  const [cameraType, setCameraType] = useState<CameraType>('front');
+  const [photo, setPhoto] = useState<any | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
+  const cameraRef = useRef<CameraView>(null);
+  
+  // Animation Values
   const scanLineY = useSharedValue(0);
-  const radarRotate = useSharedValue(0);
-  const lockScale = useSharedValue(1);
-  const lockOpacity = useSharedValue(0.3);
+  const overlayOpacity = useSharedValue(0);
 
-  // Idle animation for targeting corners
-  useEffect(() => {
-    if (!isScanning) {
-      lockScale.value = withRepeat(
-        withSequence(
-          withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      );
-      lockOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.6, { duration: 1500 }),
-          withTiming(0.3, { duration: 1500 })
-        ),
-        -1,
-        true
-      );
+  const toggleCameraType = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCameraType(current => (current === 'back' ? 'front' : 'back'));
+  };
+
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        const photoData = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: true,
+        });
+        setPhoto(photoData);
+      } catch (err) {
+        console.error("Failed to take picture:", err);
+      }
     }
-  }, [isScanning]);
+  };
 
-  // Active scan animation (Cyberpunk Sweep & Radar)
-  useEffect(() => {
-    if (isScanning) {
-      lockScale.value = withTiming(1, { duration: 300 });
-      lockOpacity.value = withTiming(1, { duration: 300 });
-      
-      scanLineY.value = withRepeat(
-        withSequence(
-          withTiming(width * 0.8, { duration: 800, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 800, easing: Easing.inOut(Easing.quad) })
-        ),
-        -1
-      );
+  const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+      base64: true,
+    });
 
-      radarRotate.value = withRepeat(
-        withTiming(360, { duration: 2000, easing: Easing.linear }),
-        -1
-      );
-    } else {
-      radarRotate.value = 0;
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setPhoto(result.assets[0]);
     }
-  }, [isScanning]);
+  };
 
-  const animatedRadar = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${radarRotate.value}deg` }],
-    opacity: isScanning ? 0.8 : 0,
-  }));
+  const retakePhoto = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPhoto(null);
+    setErrorMsg(null);
+  };
 
-  const animatedLock = useAnimatedStyle(() => ({
-    transform: [{ scale: lockScale.value }],
-    opacity: lockOpacity.value,
-  }));
-
-  const animatedScanLine = useAnimatedStyle(() => ({
-    transform: [{ translateY: scanLineY.value }],
-    opacity: isScanning ? 1 : 0,
-  }));
-
-  if (!permission) return <View style={styles.container} />;
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Optic sensor authorization required.</Text>
-        <TouchableOpacity style={styles.authButton} onPress={requestPermission}>
-          <Text style={styles.authButtonText}>AUTHORIZE SYSTEM</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const handleCapture = async () => {
-    if (!cameraRef) return;
+  const analyzeFace = async () => {
+    if (!photo || !photo.base64) return;
     
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      setIsScanning(true);
-      
-      // 1. Capture Image
-      const photo = await cameraRef.takePictureAsync({
-        quality: 0.5, // Compress for faster upload
-        base64: false,
-      });
-      
-      if (!photo) throw new Error("Failed to capture image");
-      
-      // Haptic feedback during processing
-      const hapticInterval = setInterval(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }, 800);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setAnalyzing(true);
+    setErrorMsg(null);
+    
+    // Start scanning animation
+    overlayOpacity.value = withTiming(1, { duration: 500 });
+    scanLineY.value = withRepeat(
+      withSequence(
+        withTiming(height - 200, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
 
-      // 2. Prepare Multipart Form Data
+    try {
+      // Create form data
       const formData = new FormData();
-      const filename = photo.uri.split('/').pop() || 'scan.jpg';
       
-      // Format required by React Native fetch
+      // Determine file extension and type
+      const uriParts = photo.uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
       formData.append('file', {
         uri: photo.uri,
-        name: filename,
-        type: 'image/jpeg',
+        name: `photo.${fileType}`,
+        type: `image/${fileType}`,
       } as any);
 
-      // 3. Upload to Python Backend
+      console.log('Sending request to:', `${API_URL}/analyze`);
+      
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
@@ -146,137 +112,140 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
           'Content-Type': 'multipart/form-data',
         },
       });
-      
-      clearInterval(hapticInterval);
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || "Server error");
+        throw new Error(`Analysis failed: ${response.status}`);
       }
 
-      const result = await response.json();
-      const data = result.data; // { tier, score, metrics: { harmony, angularity... } }
-
+      const resultData = await response.json();
+      console.log('Analysis Success');
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setIsScanning(false);
       
-      // 4. Navigate to Results with REAL Backend Data
       navigation.replace('Results', { 
-        tier: data.tier,
-        score: data.score,
-        harmony: data.metrics.harmony,
-        angularity: data.metrics.angularity,
-        dimorphism: data.metrics.dimorphism,
-        skin: data.metrics.skin,
+        imageUri: photo.uri,
+        results: resultData 
       });
-      
+
     } catch (error) {
-      console.error(error);
-      setIsScanning(false);
+      console.error('Error analyzing face:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      alert(error instanceof Error ? error.message : "Failed to analyze image. Ensure backend is running and API_URL is correct.");
+      setErrorMsg(error instanceof Error ? error.message : 'Network error or backend unreachable.');
+      
+      // Stop animation
+      scanLineY.value = 0;
+      overlayOpacity.value = withTiming(0, { duration: 300 });
+    } finally {
+      setAnalyzing(false);
     }
   };
 
+  const animatedLineStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: scanLineY.value }],
+    };
+  });
+
+  const animatedOverlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: overlayOpacity.value,
+    };
+  });
+
+  if (!permission) {
+    return <View style={styles.container}><ActivityIndicator color="#fff" /></View>;
+  }
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.text}>We need your permission to show the camera</Text>
+        <TouchableOpacity style={styles.actionButtonPrimary} onPress={requestPermission}>
+          <Text style={styles.actionButtonTextPri}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <CameraView 
-        style={StyleSheet.absoluteFill} 
-        facing="front"
-        ref={(ref) => setCameraRef(ref)}
-      >
-        
-        {/* HUD Overlay */}
-        <View style={styles.overlay}>
-          {/* Top Header HUD */}
-          <View style={styles.header}>
-            <TouchableOpacity 
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.goBack();
-              }} 
-              style={styles.backButton}
-            >
-              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-              <ArrowLeft color="#fff" size={24} />
-            </TouchableOpacity>
-            
-            <View style={styles.statusBadge}>
-              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={[styles.pulseDot, isScanning && styles.pulseDotActive]} />
-              <Text style={styles.statusText}>{isScanning ? 'ANALYZING' : 'AI READY'}</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.iconButton} 
+          onPress={() => navigation.goBack()}
+          disabled={analyzing}
+        >
+          <ArrowLeft color="#fff" size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Scan Face</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {!photo ? (
+        // Camera View
+        <Animated.View entering={FadeIn} style={styles.cameraContainer}>
+          <CameraView style={styles.camera} facing={cameraType} ref={cameraRef}>
+            {/* Camera Overlay Guide */}
+            <View style={styles.cameraOverlay}>
+              <View style={styles.faceGuideWrapper}>
+                <View style={styles.faceGuideTopLeft} />
+                <View style={styles.faceGuideTopRight} />
+                <View style={styles.faceGuideBottomLeft} />
+                <View style={styles.faceGuideBottomRight} />
+                <Text style={styles.guideText}>Position face within frame</Text>
+              </View>
             </View>
-          </View>
+          </CameraView>
 
-          {/* Central Targeting System */}
-          <View style={styles.targetContainer}>
-            <Animated.View style={[styles.targetBox, animatedLock]}>
-              {/* HUD Corners */}
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
-              
-              {/* Facial Mesh Simulation (Static Overlay) */}
-              {isScanning && (
-                <Animated.View entering={FadeIn} style={styles.meshOverlay}>
-                  {/* Simulated grid lines */}
-                  <View style={styles.gridLineV} />
-                  <View style={styles.gridLineH} />
-                  <View style={styles.gridCircle} />
-                </Animated.View>
-              )}
+          <View style={styles.controlsContainer}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={pickImage}>
+              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png' }} style={{width: 24, height: 24, tintColor: '#fff'}} />
+            </TouchableOpacity>
 
-              {/* Cyberpunk Radar Circle */}
-              {isScanning && (
-                <Animated.View style={[styles.radarContainer, animatedRadar]}>
-                  <View style={styles.radarSweep} />
-                </Animated.View>
-              )}
+            <TouchableOpacity style={styles.captureButtonOuter} onPress={takePicture}>
+              <View style={styles.captureButtonInner} />
+            </TouchableOpacity>
 
-              {/* Sweeping Laser */}
-              <Animated.View style={[styles.scanLineContainer, animatedScanLine]}>
-                <LinearGradient
-                  colors={['rgba(6, 182, 212, 0)', '#06b6d4', 'rgba(6, 182, 212, 0)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.scanLine}
-                />
-                <LinearGradient
-                  colors={['rgba(6, 182, 212, 0.4)', 'transparent']}
-                  style={styles.scanTrail}
-                />
-              </Animated.View>
-              
-            </Animated.View>
-            
-            <Text style={styles.instructionText}>
-              {isScanning ? 'EXTRACTING BIOMETRICS...' : 'ALIGN SUBJECT IN FRAME'}
-            </Text>
-          </View>
-
-          {/* Bottom Controls */}
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              activeOpacity={0.7}
-              onPress={handleCapture}
-              disabled={isScanning}
-              style={[styles.captureWrapper, isScanning && styles.captureWrapperDisabled]}
-            >
-              <BlurView intensity={40} tint="dark" style={styles.captureBlur}>
-                <View style={styles.captureInner}>
-                  <LinearGradient
-                    colors={['#06b6d4', '#8b5cf6']}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Target color="#000" size={32} strokeWidth={2} />
-                </View>
-              </BlurView>
+            <TouchableOpacity style={styles.secondaryButton} onPress={toggleCameraType}>
+              <RefreshCcw color="#fff" size={24} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
+      ) : (
+        // Photo Preview View
+        <Animated.View entering={FadeIn} style={styles.previewContainer}>
+          <Image source={{ uri: photo.uri }} style={styles.previewImage} />
+          
+          {/* Analysis Overlay */}
+          <Animated.View style={[styles.analysisOverlay, animatedOverlayStyle]}>
+            <Animated.View style={[styles.scanLine, animatedLineStyle]} />
+            <BlurView intensity={80} tint="dark" style={styles.analyzingBadge}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.analyzingText}>Extracting Biometrics...</Text>
+            </BlurView>
+          </Animated.View>
 
-      </CameraView>
+          {errorMsg && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
+          {!analyzing && (
+            <Animated.View entering={FadeInDown.delay(300)} style={styles.actionContainer}>
+              <TouchableOpacity style={styles.actionButtonSecondary} onPress={retakePhoto}>
+                <X color="#fff" size={24} />
+                <Text style={styles.actionButtonTextSec}>Retake</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButtonPrimary} onPress={analyzeFace}>
+                <Zap color="#000" size={24} fill="#000" />
+                <Text style={styles.actionButtonTextPri}>Analyze</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -284,211 +253,221 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#050505',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    color: '#71717a',
+    color: '#fff',
     marginBottom: 20,
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  authButton: {
-    backgroundColor: '#06b6d4',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 2,
-  },
-  authButtonText: {
-    color: '#000',
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'space-between',
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 2,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    gap: 8,
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#06b6d4',
-  },
-  pulseDotActive: {
-    backgroundColor: '#ef4444', // Red when scanning
-  },
-  statusText: {
-    color: '#06b6d4',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  targetContainer: {
-    alignItems: 'center',
-  },
-  targetBox: {
-    width: width * 0.85,
-    height: width * 0.85,
-    position: 'relative',
-    marginBottom: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  corner: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    zIndex: 10,
     position: 'absolute',
+    top: 0,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  iconButton: {
     width: 40,
     height: 40,
-    borderColor: '#06b6d4',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-  },
-  radarContainer: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 1000,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.2)',
-    overflow: 'hidden',
-  },
-  radarSweep: {
-    position: 'absolute',
-    top: 0,
-    left: '50%',
-    width: '50%',
-    height: '50%',
-    backgroundColor: 'rgba(6, 182, 212, 0.4)',
-    borderLeftWidth: 2,
-    borderLeftColor: '#06b6d4',
-  },
-  meshOverlay: {
-    ...StyleSheet.absoluteFill,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gridLineV: {
+  cameraContainer: {
+    flex: 1,
+    width: width - 32,
+    marginTop: Platform.OS === 'ios' ? 100 : 80,
+    borderRadius: 30,
+    overflow: 'hidden',
+    marginBottom: 40,
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  faceGuideWrapper: {
+    width: width * 0.7,
+    height: width * 0.9,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  faceGuideTopLeft: {
+    position: 'absolute', top: 0, left: 0, width: 40, height: 40,
+    borderTopWidth: 3, borderLeftWidth: 3, borderColor: '#fff',
+  },
+  faceGuideTopRight: {
+    position: 'absolute', top: 0, right: 0, width: 40, height: 40,
+    borderTopWidth: 3, borderRightWidth: 3, borderColor: '#fff',
+  },
+  faceGuideBottomLeft: {
+    position: 'absolute', bottom: 0, left: 0, width: 40, height: 40,
+    borderBottomWidth: 3, borderLeftWidth: 3, borderColor: '#fff',
+  },
+  faceGuideBottomRight: {
+    position: 'absolute', bottom: 0, right: 0, width: 40, height: 40,
+    borderBottomWidth: 3, borderRightWidth: 3, borderColor: '#fff',
+  },
+  guideText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: '110%',
+    opacity: 0.8,
+  },
+  controlsContainer: {
     position: 'absolute',
-    width: 1,
+    bottom: 30,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonOuter: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+  },
+  previewContainer: {
+    flex: 1,
+    width: width - 32,
+    marginTop: Platform.OS === 'ios' ? 100 : 80,
+    borderRadius: 30,
+    overflow: 'hidden',
+    marginBottom: 40,
+    backgroundColor: '#111',
+  },
+  previewImage: {
+    width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(6, 182, 212, 0.4)',
+    resizeMode: 'cover',
   },
-  gridLineH: {
-    position: 'absolute',
-    height: 1,
-    width: '100%',
-    backgroundColor: 'rgba(6, 182, 212, 0.4)',
-  },
-  gridCircle: {
-    width: '60%',
-    height: '60%',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.5)',
-    borderStyle: 'dashed',
-  },
-  scanLineContainer: {
-    width: '100%',
-    height: 60, // Total height including trail
-    position: 'absolute',
-    top: 0,
+  analysisOverlay: {
+    ...StyleSheet.absoluteFill as object,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scanLine: {
-    width: '100%',
-    height: 2,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#fff',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  scanTrail: {
-    width: '100%',
-    height: 58,
+  analyzingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    gap: 12,
   },
-  instructionText: {
+  analyzingText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
+    fontWeight: '700',
+    fontSize: 16,
   },
-  footer: {
-    paddingBottom: Platform.OS === 'ios' ? 60 : 40,
-    alignItems: 'center',
+  actionContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
   },
-  captureWrapper: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  captureWrapperDisabled: {
-    opacity: 0.5,
-  },
-  captureBlur: {
+  actionButtonSecondary: {
     flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  captureInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
     justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
+  actionButtonPrimary: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+  },
+  actionButtonTextSec: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionButtonTextPri: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  errorBox: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(220, 38, 38, 0.9)',
+    padding: 16,
+    borderRadius: 12,
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  }
 });

@@ -1,92 +1,111 @@
+import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { ScanFace, Cpu, History, User } from 'lucide-react-native';
+import { Home, BarChart3, MessageSquare, Settings } from 'lucide-react-native';
+import { View } from 'react-native';
 
+// Import Screens
 import HomeScreen from './src/screens/HomeScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import FaceGPTScreen from './src/screens/FaceGPTScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
 export type RootStackParamList = {
   MainTabs: undefined;
   Scanner: undefined;
-  Results: { 
-    tier: string; 
-    score: number; 
-    harmony: number; 
-    angularity: number; 
-    dimorphism: number; 
-    skin: number;
-  };
+  Results: { imageUri: string; results: any };
 };
 
-function MainTabs() {
+export type TabParamList = {
+  Home: undefined;
+  Metrics: undefined;
+  Coach: undefined;
+  Settings: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
+
+function TabNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
-        tabBarBackground: () => (
-          <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
-        ),
-        tabBarIcon: ({ focused, color, size }) => {
-          const iconProps = { 
-            size: 24, 
-            color: focused ? '#06b6d4' : '#71717a',
-            strokeWidth: focused ? 2.5 : 2
-          };
-          
-          if (route.name === 'HomeTab') return <ScanFace {...iconProps} />;
-          if (route.name === 'FaceGPT') return <Cpu {...iconProps} />;
-          if (route.name === 'History') return <History {...iconProps} />;
-          if (route.name === 'Profile') return <User {...iconProps} />;
+        tabBarStyle: {
+          backgroundColor: '#0a0a0a',
+          borderTopColor: '#222222',
+          borderTopWidth: 1,
+          height: 85,
+          paddingBottom: 25,
+          paddingTop: 10,
         },
-      })}
+        tabBarActiveTintColor: '#a855f7', // Purple-500 equivalent
+        tabBarInactiveTintColor: '#52525b', // Zinc-500
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+          marginTop: 4,
+        }
+      }}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} />
-      <Tab.Screen name="FaceGPT" component={FaceGPTScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <Home color={color} size={24} />
+        }}
+      />
+      <Tab.Screen 
+        name="Metrics" 
+        component={ResultsScreen} // We'll adapt ResultsScreen to show historical or empty metrics when not passed data directly
+        options={{
+          tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={24} />
+        }}
+      />
+      <Tab.Screen 
+        name="Coach" 
+        component={FaceGPTScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={24} />
+        }}
+      />
+      <Tab.Screen 
+        name="Settings" 
+        component={ProfileScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={24} />
+        }}
+      />
     </Tab.Navigator>
   );
 }
 
 export default function App() {
   return (
-    <NavigationContainer theme={DarkTheme}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <Stack.Navigator 
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#000' },
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        {/* Scanner and Results remain full screen outside the tab bar */}
-        <Stack.Screen name="Scanner" component={ScannerScreen} />
-        <Stack.Screen name="Results" component={ResultsScreen as any} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1, backgroundColor: '#030303' }}>
+      <NavigationContainer>
+        <StatusBar style="light" />
+        <Stack.Navigator 
+          initialRouteName="MainTabs"
+          screenOptions={{ 
+            headerShown: false,
+            contentStyle: { backgroundColor: '#030303' },
+            animation: 'slide_from_right'
+          }}
+        >
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen 
+            name="Scanner" 
+            component={ScannerScreen} 
+            options={{ animation: 'fade' }}
+          />
+          {/* We keep a standalone Results screen for immediate post-scan viewing, distinct from the Metrics tab if needed, but in this setup, the Metrics tab serves as the main dashboard */}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    position: 'absolute',
-    borderTopWidth: 0,
-    elevation: 0,
-    backgroundColor: 'transparent', // Handled by BlurView
-    height: Platform.OS === 'ios' ? 85 : 65,
-  }
-});
