@@ -1,15 +1,46 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { History, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import { API_URL } from '../config';
 
-const PAST_SCANS = [
-  { date: 'Today, 10:42 AM', score: 7.4, tier: 'HTN' },
-  { date: 'Oct 1, 2023', score: 7.1, tier: 'HTN' },
-  { date: 'Sep 15, 2023', score: 6.8, tier: 'MTN' },
-];
+interface ScanRecord {
+  id: number;
+  timestamp: string;
+  tier: string;
+  overall_score: number;
+}
 
 export default function HistoryScreen() {
+  const [scans, setScans] = useState<ScanRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/history?limit=20`);
+      if (response.ok) {
+        const json = await response.json();
+        setScans(json.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+    }, [])
+  );
+
+  const formatDate = (dateString: string) => {
+    const d = new Date(dateString);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -19,20 +50,35 @@ export default function HistoryScreen() {
         <Text style={styles.headerTitle}>Scan History</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        {PAST_SCANS.map((scan, i) => (
-          <View key={i} style={styles.card}>
-            <View>
-              <Text style={styles.date}>{scan.date}</Text>
-              <Text style={styles.tier}>{scan.tier}</Text>
-            </View>
-            <View style={styles.rightSide}>
-              <Text style={styles.score}>{scan.score}</Text>
-              <ChevronRight color="#71717a" size={20} />
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#06b6d4" />
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={fetchHistory} tintColor="#06b6d4" />
+          }
+        >
+          {scans.length === 0 ? (
+            <Text style={styles.emptyText}>No biometric records found. Initialize a scan to populate databanks.</Text>
+          ) : (
+            scans.map((scan, i) => (
+              <View key={i} style={styles.card}>
+                <View>
+                  <Text style={styles.date}>{formatDate(scan.timestamp)}</Text>
+                  <Text style={styles.tier}>{scan.tier}</Text>
+                </View>
+                <View style={styles.rightSide}>
+                  <Text style={styles.score}>{scan.overall_score.toFixed(1)}</Text>
+                  <ChevronRight color="#71717a" size={20} />
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -98,5 +144,17 @@ const styles = StyleSheet.create({
     color: '#06b6d4',
     fontSize: 24,
     fontWeight: '900',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#71717a',
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
+    lineHeight: 22,
   }
 });

@@ -1,12 +1,53 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, User, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, TrendingUp, AlertCircle, CheckCircle2, UploadCloud, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useState, useRef } from "react";
+
+// For local testing, ensure backend is running.
+const API_URL = "http://localhost:8000";
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(false);
+  const [scanData, setScanData] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(`${API_URL}/analyze`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setScanData(json.data);
+      } else {
+        alert("Failed to analyze image. Make sure the backend is running and you uploaded a face.");
+      }
+    } catch (err) {
+      alert("Network error connecting to AI engine.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentScore = scanData ? scanData.score : 0.0;
+  const currentTier = scanData ? scanData.tier : "AWAITING UPLOAD";
+  const pHarmony = scanData ? scanData.metrics.harmony : 0.0;
+  const pAngularity = scanData ? scanData.metrics.angularity : 0.0;
+  const pDimorphism = scanData ? scanData.metrics.dimorphism : 0.0;
+  const pSkin = scanData ? scanData.metrics.skin : 0.0;
+
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-100 flex selection:bg-amber-500/30">
+    <div className="min-h-screen bg-[#050505] text-zinc-100 flex selection:bg-cyan-500/30">
       {/* Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-black p-6 flex flex-col hidden md:flex">
         <Link href="/" className="flex items-center gap-2 mb-12">
@@ -45,10 +86,23 @@ export default function Dashboard() {
                 <Link href="/" className="hover:text-white"><ArrowLeft className="w-4 h-4" /></Link>
               </div>
               <h1 className="text-3xl font-bold tracking-tight">Your Analysis Overview</h1>
-              <p className="text-zinc-400 mt-1">Based on your latest scan from today.</p>
+              <p className="text-zinc-400 mt-1">{scanData ? `Tier Classification: ${currentTier}` : "Upload a photo to generate biometrics."}</p>
             </div>
-            <button className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-full transition-colors text-sm">
-              New Scan
+            
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload}
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-black font-bold rounded-md transition-all text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+              {loading ? "Analyzing Mesh..." : "Initialize Scan"}
             </button>
           </header>
 
@@ -57,32 +111,32 @@ export default function Dashboard() {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="md:col-span-1 bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-3xl p-8 relative overflow-hidden flex flex-col justify-center items-center text-center"
+              className="md:col-span-1 bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-md p-8 relative overflow-hidden flex flex-col justify-center items-center text-center"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[50px]" />
-              <div className="text-sm font-semibold text-zinc-500 tracking-widest uppercase mb-4">Overall Score</div>
-              <div className="text-6xl font-bold text-white mb-2 tracking-tighter">7.4<span className="text-3xl text-zinc-600">/10</span></div>
-              <div className="flex items-center gap-1 text-emerald-400 text-sm font-medium">
-                <TrendingUp className="w-4 h-4" /> +0.3 since last scan
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-[50px]" />
+              <div className="text-sm font-bold text-zinc-500 tracking-widest uppercase mb-4">Overall Score</div>
+              <div className="text-6xl font-black text-white mb-2 tracking-tighter">{currentScore}<span className="text-3xl text-zinc-600">/10</span></div>
+              <div className="flex items-center gap-1 text-cyan-400 text-sm font-bold tracking-wider">
+                TIER: {currentTier}
               </div>
             </motion.div>
 
             <div className="md:col-span-2 grid grid-cols-2 gap-4">
               {[
-                { label: "Harmony", score: "8.1", desc: "Excellent symmetry." },
-                { label: "Angularity", score: "6.8", desc: "Focus area." },
-                { label: "Dimorphism", score: "7.5", desc: "Strong masculine traits." },
-                { label: "Skin Health", score: "9.2", desc: "Optimal condition." },
+                { label: "Harmony", score: pHarmony, desc: "Golden ratio alignment." },
+                { label: "Angularity", score: pAngularity, desc: "Jawline width ratio." },
+                { label: "Dimorphism", score: pDimorphism, desc: "Masculine traits index." },
+                { label: "Skin Health", score: pSkin, desc: "Clarity & variance." },
               ].map((pillar, i) => (
                 <motion.div 
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-zinc-900/50 border border-white/5 rounded-2xl p-5 hover:bg-zinc-900 transition-colors"
+                  className="bg-zinc-900/50 border border-white/5 rounded-md p-5 hover:bg-zinc-900 transition-colors"
                 >
-                  <div className="text-xs font-semibold text-zinc-500 uppercase mb-2">{pillar.label}</div>
-                  <div className="text-2xl font-bold text-white mb-1">{pillar.score}</div>
+                  <div className="text-xs font-bold text-cyan-500 uppercase mb-2 tracking-wider">{pillar.label}</div>
+                  <div className="text-2xl font-black text-white mb-1">{pillar.score}</div>
                   <div className="text-xs text-zinc-400">{pillar.desc}</div>
                 </motion.div>
               ))}
@@ -97,21 +151,21 @@ export default function Dashboard() {
             <div className="space-y-4">
               {[
                 {
-                  icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
-                  title: "Reduce Buccal Fat / Water Retention",
-                  desc: "Your angularity score (6.8) is primarily affected by facial puffiness. Implement sodium reduction and consider targeted lymphatic drainage.",
+                  icon: <AlertCircle className="w-5 h-5 text-cyan-500" />,
+                  title: "Reduce Subcutaneous Water",
+                  desc: "Your angularity metrics indicate slight facial puffiness. Implement sodium reduction.",
                   status: "Active"
                 },
                 {
-                  icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+                  icon: <CheckCircle2 className="w-5 h-5 text-purple-500" />,
                   title: "Maintain Skincare Routine",
-                  desc: "Your skin health (9.2) is peak. Continue current tretinoin/sunscreen regimen. No changes required.",
+                  desc: "Skin variance is optimal. Continue current regimen. No surgical changes required.",
                   status: "Optimized"
                 },
                 {
-                  icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
-                  title: "Masseter Hypertrophy Protocol",
-                  desc: "Lower third width is slightly below optimal golden ratio. Incorporate mastication exercises to add 2-3mm of width to the gonial angles.",
+                  icon: <AlertCircle className="w-5 h-5 text-cyan-500" />,
+                  title: "Masseter Protocol",
+                  desc: "Lower third width requires slight lateral expansion to reach apex ratios.",
                   status: "Active"
                 }
               ].map((item, i) => (
@@ -120,7 +174,7 @@ export default function Dashboard() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + (i * 0.1) }}
-                  className="bg-black border border-white/10 p-6 rounded-2xl flex items-start gap-4 hover:border-white/20 transition-colors"
+                  className="bg-black border border-white/10 p-6 rounded-md flex items-start gap-4 hover:border-cyan-500/20 transition-colors"
                 >
                   <div className="mt-1">{item.icon}</div>
                   <div>

@@ -1,28 +1,59 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Send, Cpu } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { API_URL } from '../config';
 
 export default function FaceGPTScreen() {
   const [messages, setMessages] = useState([
     { role: 'ai', text: 'SYSTEM ONLINE. I am FaceGPT, your clinical aesthetics analyst. Upload your latest scan or ask a specific biometric query for brutal, uncompromising analysis.' }
   ]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  // In a real app, we would fetch the user's latest scan from global state/context
+  const mockBiometricContext = {
+    tier: 'HTN',
+    fwhr: 1.35
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    
+    const userMsg = input.trim();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    setMessages(prev => [...prev, { role: 'user', text: input }]);
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInput('');
+    setLoading(true);
     
-    // Simulate AI clinical response
-    setTimeout(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setMessages(prev => [...prev, { role: 'ai', text: 'ANALYSIS: Your query suggests concern regarding midface ratio. Based on standard golden ratio metrics, a 1.25 width-to-height ratio is optimal. Any deviation >0.05 requires surgical or specialized orthodontic intervention. No non-invasive protocol exists for this vector.' }]);
-    }, 1500);
+    try {
+      const res = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMsg,
+          biometric_context: mockBiometricContext
+        })
+      });
+      
+      if (res.ok) {
+        const json = await res.json();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setMessages(prev => [...prev, { role: 'ai', text: json.reply }]);
+      } else {
+        throw new Error("API Error");
+      }
+    } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setMessages(prev => [...prev, { role: 'ai', text: 'SYSTEM ERROR: Connection to FaceGPT engine failed.' }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,9 +92,9 @@ export default function FaceGPTScreen() {
           onChangeText={setInput}
           keyboardAppearance="dark"
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-          <LinearGradient colors={['#06b6d4', '#8b5cf6']} style={styles.sendInner}>
-            <Send color="#000" size={16} />
+        <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={loading}>
+          <LinearGradient colors={loading ? ['#3f3f46', '#27272a'] : ['#06b6d4', '#8b5cf6']} style={styles.sendInner}>
+            {loading ? <ActivityIndicator size="small" color="#000" /> : <Send color="#000" size={16} />}
           </LinearGradient>
         </TouchableOpacity>
       </BlurView>
