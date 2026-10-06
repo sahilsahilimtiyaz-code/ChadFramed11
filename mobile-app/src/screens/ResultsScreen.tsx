@@ -16,11 +16,11 @@ const { width } = Dimensions.get('window');
 
 const getTierColor = (tier: string): [string, string, ...string[]] => {
   switch (tier) {
-    case 'Chad': return ['#10b981', '#059669']; // Emerald gradient
-    case 'HTN': return ['#3b82f6', '#2563eb'];  // Blue gradient
-    case 'MTN': return ['#f59e0b', '#d97706'];  // Amber gradient
-    case 'LTN': return ['#ef4444', '#dc2626'];  // Red gradient
-    default: return ['#f59e0b', '#d97706'];
+    case 'Chad': return ['#06b6d4', '#8b5cf6']; // Cyan to Purple (Holographic)
+    case 'HTN': return ['#8b5cf6', '#d946ef'];  // Purple to Fuchsia
+    case 'MTN': return ['#94a3b8', '#475569'];  // Silver / Slate
+    case 'LTN': return ['#ef4444', '#991b1b'];  // Red / Dark Red
+    default: return ['#06b6d4', '#8b5cf6'];
   }
 };
 
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   tierBadgeWrapper: {
     padding: 2,
-    borderRadius: 24,
+    borderRadius: 8,
     marginBottom: 16,
     shadowColor: '#fff',
     shadowOffset: { width: 0, height: 8 },
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   pillarCard: {
     width: (width - 48 - 16) / 2, 
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   directiveCard: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
+    borderRadius: 6,
     padding: 20,
     marginBottom: 12,
     overflow: 'hidden',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.2)', 
   },
   priorityMed: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)', 
+    backgroundColor: 'rgba(139, 92, 246, 0.2)', // Purple
   },
   priorityText: {
     color: '#fff',
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     paddingVertical: 20,
-    borderRadius: 100,
+    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,

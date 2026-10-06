@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   menu: {
     width: '100%',
     backgroundColor: '#18181b',
-    borderRadius: 16,
+    borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',

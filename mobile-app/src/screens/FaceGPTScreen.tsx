@@ -31,7 +31,7 @@ export default function FaceGPTScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.iconContainer}>
+        <LinearGradient colors={['#06b6d4', '#8b5cf6']} style={styles.iconContainer}>
           <Cpu color="#000" size={20} />
         </LinearGradient>
         <Text style={styles.headerTitle}>FaceGPT Engine</Text>
@@ -62,7 +62,7 @@ export default function FaceGPTScreen() {
           keyboardAppearance="dark"
         />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-          <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.sendInner}>
+          <LinearGradient colors={['#06b6d4', '#8b5cf6']} style={styles.sendInner}>
             <Send color="#000" size={16} />
           </LinearGradient>
         </TouchableOpacity>
@@ -121,23 +121,23 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(6, 182, 212, 0.2)',
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: '#06b6d4',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     marginTop: 2,
   },
   aiAvatarText: {
-    color: '#f59e0b',
+    color: '#06b6d4',
     fontSize: 10,
     fontWeight: '900',
   },
   messageBubble: {
     maxWidth: '80%',
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 6,
   },
   bubbleUser: {
     backgroundColor: '#18181b',
@@ -146,9 +146,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleAI: {
-    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+    backgroundColor: 'rgba(6, 182, 212, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(6, 182, 212, 0.2)',
     borderTopLeftRadius: 4,
   },
   textUser: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 100,
+    borderRadius: 2,
     paddingHorizontal: 20,
     paddingVertical: 12,
     color: '#fff',

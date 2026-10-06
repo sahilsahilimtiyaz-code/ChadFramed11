@@ -43,7 +43,7 @@ export default function HomeScreen({ navigation }: { navigation: NavigationProp 
       <View style={styles.header}>
         <Animated.View entering={FadeInDown.delay(100).duration(1000).springify()}>
           <LinearGradient
-            colors={['#f59e0b', '#d97706']}
+            colors={['#06b6d4', '#8b5cf6']}
             style={styles.logoContainer}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -71,12 +71,12 @@ export default function HomeScreen({ navigation }: { navigation: NavigationProp 
 
         <Animated.View entering={FadeInUp.delay(600).duration(1000)} style={styles.statsContainer}>
           <BlurView intensity={20} tint="dark" style={styles.statBox}>
-            <Activity color="#f59e0b" size={24} strokeWidth={1.5} />
+            <Activity color="#06b6d4" size={24} strokeWidth={1.5} />
             <Text style={styles.statValue}>140+</Text>
             <Text style={styles.statLabel}>Data Points</Text>
           </BlurView>
           <BlurView intensity={20} tint="dark" style={styles.statBox}>
-            <ShieldAlert color="#f59e0b" size={24} strokeWidth={1.5} />
+            <ShieldAlert color="#06b6d4" size={24} strokeWidth={1.5} />
             <Text style={styles.statValue}>99.8%</Text>
             <Text style={styles.statLabel}>Accuracy</Text>
           </BlurView>
@@ -89,7 +89,7 @@ export default function HomeScreen({ navigation }: { navigation: NavigationProp 
           onPress={handleScanPress}
         >
           <LinearGradient
-            colors={['#f59e0b', '#d97706']}
+            colors={['#06b6d4', '#8b5cf6']}
             style={styles.scanButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     width: width * 2,
     height: width * 2,
     borderRadius: width,
-    backgroundColor: 'rgba(217, 119, 6, 0.08)', // Subtle gold ambient
+    backgroundColor: 'rgba(6, 182, 212, 0.08)', // Subtle Cyan ambient
   },
   header: {
     marginTop: Platform.OS === 'ios' ? 60 : 40,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#f59e0b',
+    shadowColor: '#06b6d4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -160,11 +160,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 6,
     marginBottom: 20,
   },
   subtitle: {
-    color: '#f59e0b',
+    color: '#06b6d4',
     fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   highlight: {
-    color: '#f59e0b',
+    color: '#06b6d4',
   },
   description: {
     color: '#a1a1aa',
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
@@ -225,9 +225,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 22,
     paddingHorizontal: 32,
-    borderRadius: 100,
+    borderRadius: 2,
     gap: 12,
-    shadowColor: '#f59e0b',
+    shadowColor: '#06b6d4',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,

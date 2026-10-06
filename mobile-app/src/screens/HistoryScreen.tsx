@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 4,
     marginBottom: 12,
   },
   date: {
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   score: {
-    color: '#f59e0b',
+    color: '#06b6d4',
     fontSize: 24,
     fontWeight: '900',
   }

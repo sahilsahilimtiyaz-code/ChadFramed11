@@ -29,6 +29,7 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
   const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
   
   const scanLineY = useSharedValue(0);
+  const radarRotate = useSharedValue(0);
   const lockScale = useSharedValue(1);
   const lockOpacity = useSharedValue(0.3);
 
@@ -54,7 +55,7 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
     }
   }, [isScanning]);
 
-  // Active scan animation
+  // Active scan animation (Cyberpunk Sweep & Radar)
   useEffect(() => {
     if (isScanning) {
       lockScale.value = withTiming(1, { duration: 300 });
@@ -62,13 +63,25 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
       
       scanLineY.value = withRepeat(
         withSequence(
-          withTiming(width * 0.8, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.quad) })
+          withTiming(width * 0.8, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0, { duration: 800, easing: Easing.inOut(Easing.quad) })
         ),
         -1
       );
+
+      radarRotate.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }),
+        -1
+      );
+    } else {
+      radarRotate.value = 0;
     }
   }, [isScanning]);
+
+  const animatedRadar = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${radarRotate.value}deg` }],
+    opacity: isScanning ? 0.8 : 0,
+  }));
 
   const animatedLock = useAnimatedStyle(() => ({
     transform: [{ scale: lockScale.value }],
@@ -214,16 +227,23 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
                 </Animated.View>
               )}
 
+              {/* Cyberpunk Radar Circle */}
+              {isScanning && (
+                <Animated.View style={[styles.radarContainer, animatedRadar]}>
+                  <View style={styles.radarSweep} />
+                </Animated.View>
+              )}
+
               {/* Sweeping Laser */}
               <Animated.View style={[styles.scanLineContainer, animatedScanLine]}>
                 <LinearGradient
-                  colors={['rgba(245, 158, 11, 0)', 'rgba(245, 158, 11, 0.8)', 'rgba(245, 158, 11, 0)']}
+                  colors={['rgba(6, 182, 212, 0)', '#06b6d4', 'rgba(6, 182, 212, 0)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.scanLine}
                 />
                 <LinearGradient
-                  colors={['rgba(245, 158, 11, 0.3)', 'transparent']}
+                  colors={['rgba(6, 182, 212, 0.4)', 'transparent']}
                   style={styles.scanTrail}
                 />
               </Animated.View>
@@ -246,7 +266,7 @@ export default function ScannerScreen({ navigation }: { navigation: NavigationPr
               <BlurView intensity={40} tint="dark" style={styles.captureBlur}>
                 <View style={styles.captureInner}>
                   <LinearGradient
-                    colors={['#f59e0b', '#d97706']}
+                    colors={['#06b6d4', '#8b5cf6']}
                     style={StyleSheet.absoluteFill}
                   />
                   <Target color="#000" size={32} strokeWidth={2} />
@@ -277,10 +297,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   authButton: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#06b6d4',
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 100,
+    borderRadius: 2,
   },
   authButtonText: {
     color: '#000',
@@ -313,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 100,
+    borderRadius: 2,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -323,13 +343,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#06b6d4',
   },
   pulseDotActive: {
     backgroundColor: '#ef4444', // Red when scanning
   },
   statusText: {
-    color: '#f59e0b',
+    color: '#06b6d4',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 2,
@@ -338,40 +358,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetBox: {
-    width: width * 0.8,
-    height: width * 0.8,
+    width: width * 0.85,
+    height: width * 0.85,
     position: 'relative',
     marginBottom: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   corner: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderColor: '#f59e0b',
+    width: 40,
+    height: 40,
+    borderColor: '#06b6d4',
+    shadowColor: '#06b6d4',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 10,
   },
   topLeft: {
     top: 0,
     left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
   },
   topRight: {
     top: 0,
     right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  radarContainer: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 1000,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.2)',
+    overflow: 'hidden',
+  },
+  radarSweep: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    width: '50%',
+    height: '50%',
+    backgroundColor: 'rgba(6, 182, 212, 0.4)',
+    borderLeftWidth: 2,
+    borderLeftColor: '#06b6d4',
   },
   meshOverlay: {
     ...StyleSheet.absoluteFill,
@@ -382,20 +426,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 1,
     height: '100%',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(6, 182, 212, 0.4)',
   },
   gridLineH: {
     position: 'absolute',
     height: 1,
     width: '100%',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(6, 182, 212, 0.4)',
   },
   gridCircle: {
-    width: '50%',
-    height: '50%',
-    borderRadius: 1000,
+    width: '60%',
+    height: '60%',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(6, 182, 212, 0.5)',
     borderStyle: 'dashed',
   },
   scanLineContainer: {

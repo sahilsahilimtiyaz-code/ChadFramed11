@@ -42,7 +42,7 @@ function MainTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           const iconProps = { 
             size: 24, 
-            color: focused ? '#f59e0b' : '#71717a',
+            color: focused ? '#06b6d4' : '#71717a',
             strokeWidth: focused ? 2.5 : 2
           };
           
